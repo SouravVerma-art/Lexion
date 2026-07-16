@@ -9,7 +9,6 @@ Lexicon is a premium, gamified vocabulary builder and reading comprehension appl
 ### 📖 1. Interactive Vocabulary Library
 *   **Comprehensive Cards**: Detailed cards showing parts of speech, CEFR difficulty (A1–C2), definitions, root origins, synonyms, antonyms, collocations, memory mnemonics, and common mistakes.
 *   **Unsplash Visuals**: Automatic high-quality visual association images representing the concept of each word.
-*   **Bilingual Easy Hindi Meanings**: Clean translations in simple, spoken Hindi (Devanagari script) alongside parenthetical Hinglish transliterations (e.g., `क्षणिक / थोड़े समय के लिए (thode samay ke liye)`) for quick learning.
 *   **Text-to-Speech (TTS)**: Native pronunciation player with customizable speed rates and voice pitch settings.
 
 ### 🔍 2. AI-Powered Dictionary Lookup
