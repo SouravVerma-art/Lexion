@@ -77,14 +77,14 @@ const wordSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 100,
-    default: 50,
+    default: 0,
   },
   revisionSchedule: {
     type: [revisionItemSchema],
     default: () => [
       { label: 'Day 1', checked: false },
       { label: 'Day 3', checked: false },
-      { label: 'Day 7 (Today)', checked: false },
+      { label: 'Day 7', checked: false },
       { label: 'Day 15', checked: false }
     ]
   },

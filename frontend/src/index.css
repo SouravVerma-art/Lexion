@@ -1,3 +1,240 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Premium Global Smoothness Upgrades */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+/* Smooth active theme and element transitions */
+body, .bg-surface, .bg-surface-container, .bg-surface-container-low, .bg-surface-container-lowest, .bg-surface-container-highest, .text-on-surface, .text-on-surface-variant, .border-outline-variant, aside, header, nav, select, input, textarea {
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom view entry animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 3D Flashcard Flip Effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Gamified Flashcards animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes combo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.animate-combo-pulse {
+  animation: combo-pulse 0.3s ease-out;
+}
+
+/* Premium Gamified Light Layouts */
+.game-light-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.game-card-shadow {
+  box-shadow: 0 15px 35px -5px rgba(11, 28, 48, 0.05), 0 0 30px -5px rgba(99, 102, 241, 0.05);
+}
+
+.game-card-shadow-active {
+  box-shadow: 0 15px 35px -5px rgba(11, 28, 48, 0.06), 0 0 35px 2px rgba(249, 115, 22, 0.1);
+}
+
+/* Fire animation for high combos (light theme) */
+@keyframes flame-glow-light {
+  0%, 100% {
+    border-color: rgba(249, 115, 22, 0.35);
+    box-shadow: 0 0 12px 1px rgba(249, 115, 22, 0.12), 0 0 25px 2px rgba(239, 68, 68, 0.05);
+  }
+  50% {
+    border-color: rgba(249, 115, 22, 0.65);
+    box-shadow: 0 0 20px 2px rgba(249, 115, 22, 0.22), 0 0 35px 4px rgba(239, 68, 68, 0.12);
+  }
+}
+.animate-flame-glow {
+  animation: flame-glow-light 1.5s infinite ease-in-out;
+}
+
+/* Rank Badge shine effect */
+@keyframes gold-shine {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gold-shine-gradient {
+  background: linear-gradient(-45deg, #fbbf24, #f59e0b, #d97706, #fbbf24, #f59e0b);
+  background-size: 400% 400%;
+  animation: gold-shine 3s infinite ease-in-out;
+}
+
+/* Option transitions */
+.choice-btn-transition {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root {
+  --color-background: #f8f9ff;
+  --color-surface: #f8f9ff;
+  --color-on-surface: #0b1c30;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface-bright: #f8f9ff;
+  --color-surface-variant: #d3e4fe;
+  --color-on-surface-variant: #45474c;
+  --color-primary: #091426;
+  --color-outline-variant: #c5c6cd;
+  
+  /* Defaults for themes */
+  --color-secondary: #4b41e1;
+  --color-secondary-container: #645efb;
+}
+
+.dark {
+  --color-background: #020617;
+  --color-surface: #0b132b;
+  --color-on-surface: #f8fafc;
+  --color-surface-container: #1e293b;
+  --color-surface-container-low: #0f172a;
+  --color-surface-container-lowest: #020617;
+  --color-surface-container-highest: #334155;
+  --color-surface-bright: #1e293b;
+  --color-surface-variant: #334155;
+  --color-on-surface-variant: #94a3b8;
+  --color-primary: #f8fafc;
+  --color-outline-variant: #334155;
+
+  /* Defaults for themes */
+  --color-secondary: #6366f1;
+  --color-secondary-container: #818cf8;
+}
+
+/* Color Accents (Light Mode) */
+html[data-theme="indigo"] {
+  --color-secondary: #4b41e1;
+  --color-secondary-container: #645efb;
+}
+html[data-theme="emerald"] {
+  --color-secondary: #059669;
+  --color-secondary-container: #10b981;
+}
+html[data-theme="crimson"] {
+  --color-secondary: #e11d48;
+  --color-secondary-container: #f43f5e;
+}
+html[data-theme="amber"] {
+  --color-secondary: #d97706;
+  --color-secondary-container: #f59e0b;
+}
+
+/* Color Accents (Dark Mode) */
+.dark[data-theme="indigo"] {
+  --color-secondary: #6366f1;
+  --color-secondary-container: #818cf8;
+}
+.dark[data-theme="emerald"] {
+  --color-secondary: #10b981;
+  --color-secondary-container: #34d399;
+}
+.dark[data-theme="crimson"] {
+  --color-secondary: #f43f5e;
+  --color-secondary-container: #fb7185;
+}
+.dark[data-theme="amber"] {
+  --color-secondary: #f59e0b;
+  --color-secondary-container: #fbbf24;
+}
+
+/* Daily Task Micro-Gamification Animations */
+@keyframes stampBounce {
+  0% { transform: scale(3.5); opacity: 0; }
+  70% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-stamp {
+  animation: stampBounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes sandFade {
+  0% { opacity: 1; filter: contrast(1.2) brightness(1.2); }
+  50% { filter: blur(2px) opacity(0.5); }
+  100% { opacity: 0; filter: blur(5px) opacity(0); transform: translateY(-8px); }
+}
+.animate-sand-fade {
+  animation: sandFade 1s ease-out forwards;
+}
+
+@keyframes clockShake {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-6deg); }
+  40%, 80% { transform: rotate(6deg); }
+}
+.animate-clock-shake {
+  animation: clockShake 0.4s ease-in-out infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+  70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
+  100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+.animate-pulse-badge {
+  animation: pulseBadge 2s infinite;
+}
+
+

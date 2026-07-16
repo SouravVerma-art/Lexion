@@ -3,9 +3,18 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import WordCard from './components/WordCard';
 import AddWordModal from './components/AddWordModal';
+import ImportPdfModal from './components/ImportPdfModal';
 import WordDetail from './components/WordDetail';
+import QuizView from './components/QuizView';
+import ReadingComprehension from './components/ReadingComprehension';
+import DictionarySearchDetail from './components/DictionarySearchDetail';
+import FlashcardsView from './components/FlashcardsView';
+import SettingsView from './components/SettingsView';
+import DailyTaskView from './components/DailyTaskView';
+import WritingView from './components/writing/WritingView';
+import ProfileStatsModal from './components/ProfileStatsModal';
 
-const API_URL = 'http://localhost:5000/api/words';
+const API_URL = '/api/words';
 
 export default function App() {
   const [words, setWords] = useState([]);
@@ -17,6 +26,21 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('');
   
   // Navigation states
+  const [currentView, setCurrentView] = useState('library'); // 'library', 'flashcards', 'quiz', 'dailyTask'
+  const [dailyTaskCompleted, setDailyTaskCompleted] = useState(() => {
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const saveObj = localStorage.getItem('lexicon_daily_task_completed');
+      if (saveObj) {
+        const parsed = JSON.parse(saveObj);
+        return parsed && parsed.date === todayStr && parsed.completed;
+      }
+    } catch (e) {
+      console.error("Failed to parse daily task completions:", e);
+    }
+    return false;
+  });
+  const [quizModeType, setQuizModeType] = useState(null); // null, 'vocab', 'reading'
   const [selectedWord, setSelectedWord] = useState(null);
   
   // Dictionary Integration states
@@ -25,7 +49,9 @@ export default function App() {
   const [dictError, setDictError] = useState('');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [prefilledWord, setPrefilledWord] = useState('');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Fetch words from backend
   const fetchWords = async () => {
@@ -34,9 +60,15 @@ export default function App() {
       const res = await fetch(API_URL);
       if (!res.ok) throw new Error('Failed to fetch vocabulary');
       const data = await res.json();
-      setWords(data);
+      if (Array.isArray(data)) {
+        setWords(data);
+      } else {
+        console.error('API response is not an array:', data);
+        setWords([]);
+      }
     } catch (error) {
       console.error('Error fetching words:', error);
+      setWords([]);
     } finally {
       setLoading(false);
     }
@@ -44,6 +76,19 @@ export default function App() {
 
   useEffect(() => {
     fetchWords();
+
+    // Load saved theme and accent configurations
+    const savedMode = localStorage.getItem('lexicon_theme_mode') || 'light';
+    if (savedMode === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+
+    const savedAccent = localStorage.getItem('lexicon_theme_accent') || 'indigo';
+    document.documentElement.setAttribute('data-theme', savedAccent);
   }, []);
 
   // Update selectedWord state if the word changes in the main list
@@ -90,6 +135,15 @@ export default function App() {
 
   // Update word properties (like spaced repetition fields)
   const handleUpdateWord = async (id, updatedFields) => {
+    // If updatedFields is already a fully saved document from the backend, update state directly
+    if (updatedFields && updatedFields._id) {
+      setWords(words.map(w => w._id === id ? updatedFields : w));
+      if (selectedWord && selectedWord._id === id) {
+        setSelectedWord(updatedFields);
+      }
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
@@ -99,6 +153,9 @@ export default function App() {
       if (res.ok) {
         const updated = await res.json();
         setWords(words.map(w => w._id === id ? updated : w));
+        if (selectedWord && selectedWord._id === id) {
+          setSelectedWord(updated);
+        }
       }
     } catch (error) {
       console.error('Error updating word:', error);
@@ -132,7 +189,8 @@ export default function App() {
       if (res.ok) {
         const saved = await res.json();
         setWords([saved, ...words]);
-        setDictionaryResult(null); // Clear lookup if saved
+        setSelectedWord(saved); // Transition to details view directly!
+        setDictionaryResult(null); // Clear lookup
       } else {
         const errData = await res.json();
         alert(errData.message || 'Failed to save word');
@@ -142,47 +200,35 @@ export default function App() {
     }
   };
 
-  // Integrated Dictionary lookup (Free Dictionary API)
+  // Integrated Dictionary lookup (Gemini Backend API)
   const handleDictionaryLookup = async (wordToSearch) => {
     if (!wordToSearch.trim()) return;
     
-    // First check if it already exists in the local database
-    const localMatch = words.find(w => w.word.toLowerCase() === wordToSearch.trim().toLowerCase());
-    if (localMatch) {
-      setSelectedWord(localMatch);
-      setNewWordSearch('');
-      setDictionaryResult(null);
-      return;
-    }
-
     try {
       setDictSearching(true);
       setDictError('');
       setDictionaryResult(null);
 
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${wordToSearch.trim()}`);
+      const res = await fetch(`${API_URL}/lookup/${encodeURIComponent(wordToSearch.trim())}`);
       if (!res.ok) {
-        throw new Error('Word not found in the dictionary.');
+        let errMsg = 'Failed to find word details.';
+        try {
+          const errData = await res.json();
+          if (errData && errData.message) errMsg = errData.message;
+        } catch (_) {}
+        throw new Error(errMsg);
       }
       const data = await res.json();
       
-      const firstEntry = data[0];
-      const meaning = firstEntry.meanings[0];
-      const definitionText = meaning.definitions[0].definition;
-      const partOfSpeechText = meaning.partOfSpeech;
-      const phoneticsText = firstEntry.phonetic || (firstEntry.phonetics && firstEntry.phonetics[0] && firstEntry.phonetics[0].text) || '';
-
-      setDictionaryResult({
-        word: firstEntry.word,
-        partOfSpeech: partOfSpeechText,
-        definition: definitionText,
-        pronunciation: phoneticsText,
-        synonyms: meaning.synonyms || [],
-        antonyms: meaning.antonyms || [],
-        examples: meaning.definitions[0].example ? [meaning.definitions[0].example] : [],
-        difficulty: 'B2', // Default difficulty
-        status: 'learning'
-      });
+      if (data.alreadyInLibrary) {
+        setSelectedWord(data);
+        setCurrentView('library');
+        setNewWordSearch('');
+      } else {
+        setDictionaryResult(data);
+        setCurrentView('library');
+        setNewWordSearch('');
+      }
     } catch (error) {
       setDictError(error.message || 'Failed to look up word.');
     } finally {
@@ -217,27 +263,132 @@ export default function App() {
     return matchesSearch && matchesFilterWord && matchesPOS && matchesStatus;
   });
 
+  const handleViewChange = (view) => {
+    setSelectedWord(null);
+    setQuizModeType(null);
+    setDictionaryResult(null);
+    setCurrentView(view);
+  };
+
   return (
     <div className="flex min-h-screen bg-surface">
-      <Sidebar onAddWordClick={() => { setPrefilledWord(''); setIsAddModalOpen(true); }} />
+      <Sidebar 
+        onAddWordClick={() => { setPrefilledWord(''); setIsAddModalOpen(true); }} 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        dailyTaskCompleted={dailyTaskCompleted}
+      />
 
-      <div className="flex-1 flex flex-col md:ml-64 w-full">
-        <Header searchVal={searchTerm} onSearchChange={setSearchTerm} />
+      <div className="flex-1 flex flex-col md:ml-64 w-full animate-fadeIn">
+        <Header searchVal={searchTerm} onSearchChange={setSearchTerm} currentView={currentView} onProfileClick={() => setIsProfileModalOpen(true)} />
 
-        <main className="flex-1 p-gutter max-w-container-max mx-auto w-full space-y-section-gap pb-24">
+        <main className="flex-1 p-gutter md:p-8 flex flex-col items-center overflow-y-auto pb-32">
           
-          {selectedWord ? (
+          {dictSearching && (
+            <div className="text-center py-12 text-on-surface-variant font-body-main italic">
+              Searching public dictionary...
+            </div>
+          )}
+
+          {!dictSearching && dictionaryResult ? (
+            <DictionarySearchDetail 
+              result={dictionaryResult} 
+              onAdd={handleAddWord} 
+              onBack={() => setDictionaryResult(null)} 
+            />
+          ) : currentView === 'dailyTask' ? (
+            <DailyTaskView words={words} onComplete={() => setDailyTaskCompleted(true)} />
+          ) : currentView === 'settings' ? (
+            <SettingsView 
+              fetchWords={fetchWords} 
+              onClose={() => setCurrentView('library')} 
+            />
+          ) : currentView === 'flashcards' ? (
+            <FlashcardsView 
+              words={words} 
+              onUpdateWord={handleUpdateWord} 
+              onClose={() => setCurrentView('library')} 
+            />
+          ) : currentView === 'writing' ? (
+            <WritingView />
+          ) : currentView === 'quiz' ? (
+            quizModeType === 'vocab' ? (
+              <QuizView words={words} onClose={() => setQuizModeType(null)} />
+            ) : quizModeType === 'reading' ? (
+              <ReadingComprehension onClose={() => setQuizModeType(null)} />
+            ) : (
+              // Quiz Selection Landing Page
+              <div className="w-full max-w-2xl mx-auto space-y-8 py-6">
+                <div className="text-center space-y-2">
+                  <h2 className="font-h1-academic text-3xl text-primary font-bold">Lexicon Quiz Sessions</h2>
+                  <p className="font-body-main text-body-sm text-on-surface-variant max-w-md mx-auto">
+                    Challenge your academic excellence using different custom study exercises.
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Card 1: Vocab Quiz */}
+                  <div 
+                    onClick={() => setQuizModeType('vocab')}
+                    className="bg-surface-container-lowest border border-outline-variant hover:border-secondary hover:shadow-md rounded-xl p-6 cursor-pointer transition-all duration-200 group flex flex-col justify-between"
+                  >
+                    <div className="space-y-4">
+                      <span className="material-symbols-outlined text-4xl text-secondary">psychology</span>
+                      <h3 className="font-h1-academic text-xl text-primary font-bold">Vocabulary Practice</h3>
+                      <p className="text-body-sm text-on-surface-variant leading-relaxed">
+                        Practice synonyms, definitions, and fill-in-the-blank questions generated dynamically from your active library.
+                      </p>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-surface-container text-right">
+                      <span className="font-button-text text-xs text-secondary group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                        Start Quiz <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Reading Comp */}
+                  <div 
+                    onClick={() => setQuizModeType('reading')}
+                    className="bg-surface-container-lowest border border-outline-variant hover:border-secondary hover:shadow-md rounded-xl p-6 cursor-pointer transition-all duration-200 group flex flex-col justify-between"
+                  >
+                    <div className="space-y-4">
+                      <span className="material-symbols-outlined text-4xl text-secondary">menu_book</span>
+                      <h3 className="font-h1-academic text-xl text-primary font-bold">Reading Comprehension</h3>
+                      <p className="text-body-sm text-on-surface-variant leading-relaxed">
+                        Read scholarly articles and answer comprehensive multiple-choice questions to test your literacy and memory retention.
+                      </p>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-surface-container text-right">
+                      <span className="font-button-text text-xs text-secondary group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                        Select Passage <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          ) : selectedWord ? (
             <WordDetail 
               word={selectedWord} 
               onBack={() => setSelectedWord(null)} 
               onUpdateWord={handleUpdateWord}
             />
           ) : (
-            <>
+            <div className="w-full max-w-container-max space-y-section-gap">
               {/* Page Header & Quick Add */}
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                  <h2 className="font-h1-academic text-h1-academic text-primary tracking-tight">My Library</h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="font-h1-academic text-h1-academic text-primary tracking-tight">My Library</h2>
+                    <button 
+                      onClick={() => setIsPdfModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/20 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      title="Import words from a PDF list"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                      Import PDF
+                    </button>
+                  </div>
                   <p className="font-body-main text-body-main text-on-surface-variant mt-1">Manage and review your saved vocabulary.</p>
                 </div>
                 <div className="relative w-full max-w-md group self-start sm:self-auto">
@@ -253,68 +404,38 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Dict lookup Search Results */}
-              {(dictSearching || dictionaryResult || dictError) && (
-                <div className="bg-surface-container-low border border-secondary/20 rounded-xl p-6 shadow-sm space-y-4">
-                  <div className="flex justify-between items-center">
+              {/* Dict Error notice */}
+              {dictError && (
+                <div className="bg-surface-container-low border border-secondary/20 rounded-xl p-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-4">
                     <h3 className="font-h1-academic text-lg text-primary font-bold">Integrated Dictionary Lookup</h3>
                     <button 
-                      onClick={() => { setDictionaryResult(null); setDictError(''); setNewWordSearch(''); }}
+                      onClick={() => setDictError('')}
                       className="text-outline-variant hover:text-primary transition-colors"
                     >
                       <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                   </div>
-
-                  {dictSearching && (
-                    <div className="text-body-sm text-on-surface-variant italic">Searching public dictionary...</div>
-                  )}
-
-                  {dictError && (
-                    <div className="text-body-sm text-error bg-error-container/30 border border-error-container p-3 rounded-lg flex items-center justify-between">
-                      <span>{dictError}</span>
-                      <button 
-                        onClick={() => {
-                          setPrefilledWord(newWordSearch);
-                          setIsAddModalOpen(true);
-                          setDictError('');
-                          setNewWordSearch('');
-                        }}
-                        className="text-secondary font-bold text-xs hover:underline"
-                      >
-                        Create Custom Word instead
-                      </button>
-                    </div>
-                  )}
-
-                  {dictionaryResult && (
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-4 rounded-lg border border-[#E2E8F0]">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-display-word-mobile text-2xl font-bold text-primary">{dictionaryResult.word}</span>
-                          <span className="text-xs uppercase bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded-full">{dictionaryResult.partOfSpeech}</span>
-                          {dictionaryResult.pronunciation && (
-                            <span className="text-xs text-on-surface-variant italic font-label-mono">{dictionaryResult.pronunciation}</span>
-                          )}
-                        </div>
-                        <p className="text-body-sm text-on-surface-variant leading-relaxed">
-                          {dictionaryResult.definition}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleAddWord(dictionaryResult)}
-                        className="bg-secondary text-on-secondary hover:bg-[#3a31c5] px-4 py-2 rounded-lg font-button-text text-button-text shrink-0 transition-colors shadow-sm"
-                      >
-                        Add to Library
-                      </button>
-                    </div>
-                  )}
+                  <div className="text-body-sm text-error bg-error-container/30 border border-error-container p-3 rounded-lg flex items-center justify-between">
+                    <span>{dictError}</span>
+                    <button 
+                      onClick={() => {
+                        setPrefilledWord(newWordSearch);
+                        setIsAddModalOpen(true);
+                        setDictError('');
+                        setNewWordSearch('');
+                      }}
+                      className="text-secondary font-bold text-xs hover:underline"
+                    >
+                      Create Custom Word instead
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* Stats & Filters Row */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-                {/* Daily Progress Widget (Bento Style) */}
+                {/* Daily Progress Widget */}
                 <div className="lg:col-span-1 bg-surface-container-lowest rounded-xl border border-[#E2E8F0] p-5 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                   <h3 className="font-label-mono text-label-mono text-outline uppercase tracking-wider mb-4">Daily Progress</h3>
                   <div className="space-y-4">
@@ -400,7 +521,6 @@ export default function App() {
                     <div 
                       key={word._id} 
                       onClick={(e) => {
-                        // Avoid triggering navigation when clicking internal action buttons
                         const targetTagName = e.target.tagName.toLowerCase();
                         if (targetTagName !== 'button' && !e.target.closest('button')) {
                           setSelectedWord(word);
@@ -417,16 +537,85 @@ export default function App() {
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </main>
       </div>
+
+      {/* BottomNavBar (Visible on Mobile, Hidden on Desktop) */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 md:hidden bg-surface border-t border-outline-variant shadow-sm pb-safe">
+        <button 
+          onClick={() => handleViewChange('library')}
+          className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+            currentView === 'library' && !selectedWord && !dictionaryResult ? 'text-secondary bg-surface-container-low font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[24px]">library_books</span>
+          <span className="font-label-mono text-[10px] mt-1">Library</span>
+        </button>
+        
+        <button 
+          onClick={() => handleViewChange('flashcards')}
+          className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+            currentView === 'flashcards' ? 'text-secondary bg-surface-container-low font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[24px]">style</span>
+          <span className="font-label-mono text-[10px] mt-1">Flashcards</span>
+        </button>
+
+        <button 
+          onClick={() => handleViewChange('dailyTask')}
+          className={`flex flex-col items-center justify-center w-full h-full relative transition-colors ${
+            currentView === 'dailyTask' ? 'text-secondary bg-surface-container-low font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[24px]">stars</span>
+          <span className="font-label-mono text-[10px] mt-1">Daily</span>
+          {!dailyTaskCompleted && (
+            <span className="absolute top-2 right-[35%] w-2 h-2 rounded-full bg-amber-500 animate-pulse-badge"></span>
+          )}
+        </button>
+
+        <button 
+          onClick={() => handleViewChange('quiz')}
+          className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+            currentView === 'quiz' ? 'text-secondary bg-surface-container-low font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[24px]">psychology</span>
+          <span className="font-label-mono text-[10px] mt-1">Quiz</span>
+        </button>
+
+        <button 
+          onClick={() => handleViewChange('settings')}
+          className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+            currentView === 'settings' ? 'text-secondary bg-surface-container-low font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[24px]">settings</span>
+          <span className="font-label-mono text-[10px] mt-1">Settings</span>
+        </button>
+      </nav>
 
       <AddWordModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
         onAddWord={handleAddWord}
         initialWord={prefilledWord}
+      />
+
+      <ImportPdfModal 
+        isOpen={isPdfModalOpen} 
+        onClose={() => setIsPdfModalOpen(false)} 
+        apiUrl={API_URL}
+        onWordImported={(newWord) => setWords(prev => [newWord, ...prev])}
+      />
+
+      <ProfileStatsModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+        words={words} 
       />
     </div>
   );

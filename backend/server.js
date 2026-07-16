@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 const wordRoutes = require('./routes/words');
 const Word = require('./models/Word');
 
@@ -16,7 +17,8 @@ app.use(express.json());
 app.use('/api/words', wordRoutes);
 
 // Database Connection & Seeding
-mongoose.connect(process.env.MONGODB_URI)
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lexicon';
+mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
     
@@ -54,7 +56,7 @@ mongoose.connect(process.env.MONGODB_URI)
           revisionSchedule: [
             { label: 'Day 1', checked: true },
             { label: 'Day 3', checked: false },
-            { label: 'Day 7 (Today)', checked: false },
+            { label: 'Day 7', checked: false },
             { label: 'Day 15', checked: false }
           ],
           commonMistake: 'Do not confuse with "effeminate" (having characteristics regarded as typical of a woman).'
@@ -87,7 +89,7 @@ mongoose.connect(process.env.MONGODB_URI)
           revisionSchedule: [
             { label: 'Day 1', checked: true },
             { label: 'Day 3', checked: true },
-            { label: 'Day 7 (Today)', checked: false },
+            { label: 'Day 7', checked: false },
             { label: 'Day 15', checked: false }
           ],
           commonMistake: "Don't confuse with omniscient (knowing everything). Ubiquitous strictly refers to location/presence."
@@ -120,7 +122,7 @@ mongoose.connect(process.env.MONGODB_URI)
           revisionSchedule: [
             { label: 'Day 1', checked: false },
             { label: 'Day 3', checked: false },
-            { label: 'Day 7 (Today)', checked: false },
+            { label: 'Day 7', checked: false },
             { label: 'Day 15', checked: false }
           ],
           commonMistake: 'Do not confuse with "militate" (to operate or work against, e.g. "militate against success").'
@@ -133,10 +135,19 @@ mongoose.connect(process.env.MONGODB_URI)
     console.error('Failed to connect to MongoDB', err);
   });
 
-// Root Endpoint
-app.get('/', (req, res) => {
-  res.send('Lexicon API is running');
-});
+// Serve static frontend files in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../frontend/dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  // Root Endpoint
+  app.get('/', (req, res) => {
+    res.send('Lexicon API is running');
+  });
+}
 
 // Start Server
 app.listen(PORT, () => {

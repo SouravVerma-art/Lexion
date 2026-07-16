@@ -100,6 +100,7 @@ export default function AddWordModal({ isOpen, onClose, onAddWord, initialWord =
               <option value="mastered">Mastered</option>
             </select>
           </div>
+
           <div>
             <label class="block font-label-mono text-label-mono text-outline uppercase mb-1">Definition</label>
             <textarea 
