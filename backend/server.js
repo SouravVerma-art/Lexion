@@ -135,9 +135,10 @@ mongoose.connect(MONGODB_URI)
     console.error('Failed to connect to MongoDB', err);
   });
 
-// Serve static frontend files in production
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../frontend/dist');
+// Serve static frontend files in production if they exist
+const fs = require('fs');
+const distPath = path.join(__dirname, '../frontend/dist');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'index.html'))) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
